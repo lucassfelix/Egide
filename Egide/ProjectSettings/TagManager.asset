@@ -8,6 +8,7 @@ TagManager:
   - Enemy
   - Wall
   - Shield
+  - End
   layers:
   - Default
   - TransparentFX
@@ -20,7 +21,7 @@ TagManager:
   - Ground
   - Shield
   - Wall
-  - 
+  - Enemy
   - 
   - 
   - 

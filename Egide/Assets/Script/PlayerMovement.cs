@@ -30,13 +30,17 @@ public class PlayerMovement : MonoBehaviour
 
     [SerializeField] private LayerMask groundLayerMask = 0;
     [SerializeField] private LayerMask shieldLayerMask = 0;
-
+    [SerializeField] private LayerMask enemyLayerMask = 0;
 
     
 
 
     private Collider2D _collider2D;
     private bool _isShielded;
+    private bool _canKill;
+    private bool _onTopOfShield;
+    private bool _onTopOfEnemy;
+    private float _timeElapsed;
 
     private float _horizontalAxis,
         _horizontalLerpValue = 0.5f,
@@ -48,20 +52,17 @@ public class PlayerMovement : MonoBehaviour
         _varJumpTopSpeed;
 
     private Rigidbody2D _rb;
-    private Transform _shieldThrowerTransform;
-    private SpriteRenderer _playerSpriteRenderer;
     private Animator _playerAnimator;
-    private bool _onTopOfShield;
 
     private void Start()
     {
-        _shieldThrowerTransform = transform.GetChild(0);
         _rb = GetComponent<Rigidbody2D>();
         _collider2D = GetComponent<Collider2D>();
         _jumpVelocity = -jumpTopVelocity;
         _isShielded = true;
-        _playerSpriteRenderer = GetComponent<SpriteRenderer>();
         _playerAnimator = GetComponent<Animator>();
+        _canKill = false;
+        _timeElapsed = 0;
     }
 
     public void SetShielded(bool setIsShielded)
@@ -78,6 +79,8 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
 
+        _timeElapsed += Time.deltaTime;
+        
         if (transform.position.x < -15f || transform.position.y < -8f)
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
@@ -124,13 +127,30 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D other)
     {
-        if(other.gameObject.CompareTag("Shield") && Input.GetKey(KeyCode.W) && _onTopOfShield)
-            _jumpVelocity = shieldJumpVelocity;
-        else if(other.gameObject.CompareTag("Enemy") && !_isShielded)
+        if (other.gameObject.CompareTag("Shield") && Input.GetKey(KeyCode.W) && _onTopOfShield)
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            _jumpVelocity = shieldJumpVelocity;
+            _canKill = true;
+        }
+        else if(other.gameObject.CompareTag("Enemy"))
+        {
+            if(!_isShielded)
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            else if (_canKill && _onTopOfEnemy)
+            {
+                Destroy(other.gameObject);
+                _canKill = false;
+            }
+        }else if (other.gameObject.CompareTag("Ground"))
+        {
+            _canKill = false;
+        }else if (other.gameObject.CompareTag("End"))
+        {
+            Debug.Log("Tempo: " + Mathf.FloorToInt(_timeElapsed%60) + " segundos.");
+            other.collider.enabled = false;
         }
     }
+    
 
     private bool CheckRoof()
     {
@@ -141,25 +161,24 @@ public class PlayerMovement : MonoBehaviour
         return raycastHit.collider != null;
     }
 
+    public void SetCanKill(bool canKill)
+    {
+        _canKill = canKill;
+    }
+    
     private void HandleHorizontalMovement()
     {
         if (Input.GetKey(KeyCode.D) && _horizontalLerpValue >= 0.5)
         {
             //Change player orientation
             transform.rotation = Quaternion.identity;
-
-
-            
             _horizontalLerpValue = Mathf.MoveTowards(_horizontalLerpValue, 1f, _varAcceleration * Time.deltaTime);
         }
         else if (Input.GetKey(KeyCode.A) && _horizontalLerpValue <= 0.5)
         {
            //Change shield position
            transform.rotation = new Quaternion(0f,-180f,0f,0);
-
-          
-
-            _horizontalLerpValue = Mathf.MoveTowards(_horizontalLerpValue, 0f, _varAcceleration * Time.deltaTime);
+           _horizontalLerpValue = Mathf.MoveTowards(_horizontalLerpValue, 0f, _varAcceleration * Time.deltaTime);
         }
         else
         {
@@ -169,6 +188,16 @@ public class PlayerMovement : MonoBehaviour
         _horizontalAxis = Mathf.Lerp(-1, 1, _horizontalLerpValue);
 
         _playerAnimator.SetBool("isWalking", _horizontalAxis != 0);
+    }
+    
+    private bool OnTopOfEnemy()
+    {
+        var bounds = _collider2D.bounds;
+        const float extraHeight = .2f;
+        var raycastHitEnemy =
+            Physics2D.BoxCast(bounds.center - new Vector3(0,bounds.extents.y,0), bounds.size, 0, Vector2.down,  extraHeight, enemyLayerMask);
+        
+        return raycastHitEnemy.collider != null;
     }
 
     private bool OnTopOfShield()
@@ -189,12 +218,14 @@ public class PlayerMovement : MonoBehaviour
         }
 
         _onTopOfShield = OnTopOfShield();
+        _onTopOfEnemy = OnTopOfEnemy();
         if (IsGrounded())
         {
-
             if (Input.GetKeyDown(KeyCode.W))
             {
                 _jumpVelocity = _varJumpTopSpeed;
+                if (_isShielded)
+                    _canKill = true;
             }
             
             _varJumpTopSpeed = 1;

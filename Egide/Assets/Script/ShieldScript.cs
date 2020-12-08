@@ -46,6 +46,8 @@ public class ShieldScript : MonoBehaviour
             velocity =  new Vector2(-forceFactor, velocity.y + 1);
             rb.velocity = velocity;
         }
+
+        _parentMovement.SetCanKill(false);
         _parentMovement.SetShielded(false);
     }
 }

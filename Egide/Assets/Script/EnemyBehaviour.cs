@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using TMPro;
+﻿using System.Collections;
 using UnityEngine;
 
 public class EnemyBehaviour : MonoBehaviour
@@ -11,7 +8,7 @@ public class EnemyBehaviour : MonoBehaviour
     [SerializeField] private Vector2 shotDirection = Vector2.left;
     [SerializeField] private float shotForce = 10f;
 
-    private GameObject _bullet = null;
+    private GameObject _bullet;
     private Bounds _bound;
 
     private void Awake()
@@ -30,17 +27,13 @@ public class EnemyBehaviour : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(shootInterval);
-            var shotPosition = new Vector2(transform.position.x + (_bound.size.x *shotDirection.x) , transform.position.y);
+            var position = transform.position;
+            var shotPosition = new Vector2(position.x + (_bound.size.x *shotDirection.x) , position.y);
             var newBullet = Instantiate(_bullet, shotPosition , Quaternion.identity);
 
             newBullet.GetComponent<Rigidbody2D>().velocity = shotDirection * shotForce;
 
         }
     }
-
-    // Update is called once per frame
-    private void Update()
-    {
-        Debug.DrawRay( new Vector2(transform.position.x + (_bound.size.x *shotDirection.x), transform.position.y),shotDirection*2,Color.yellow);
-    }
+    
 }
